@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Personal-Financial-Lab
 
-## Getting Started
+A private decision-support web app to manage and analyze our household financial data.
 
-First, run the development server:
+## 🎯 Purpose
+This app helps us:
+- Track our full financial picture in one place
+- Monitor trends over time
+- Make better financial decisions using structured data
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 🧱 Core Features
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 📊 Current Financial Status (סטטוס פיננסי נוכחי)
+- Consolidated view of all financial products
+- Net worth calculation
+- Breakdown by person (Ariel / Inbar / Joint)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 📈 Financial Timeline (ציר זמן פיננסי)
+- Historical tracking of financial data
+- Trends and changes over time
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 🔄 Monthly Updates
+- Manual data input (once per month)
+- Supports:
+  - Balance updates
+  - New / removed financial products
+  - Adjustments (gifts, transfers, etc.)
 
-## Learn More
+### 💼 Supported Financial Products
+- Pension (קרן פנסיה)
+- Hishtalmut (קרן השתלמות)
+- Investment portfolios (תיק השקעות)
+- Bank accounts & deposits (חשבון / פיקדון)
 
-To learn more about Next.js, take a look at the following resources:
+### 💰 Income Handling
+- Monthly net salaries (Ariel + Inbar)
+- Used to explain changes in net worth
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🧩 Tech Stack
+- Next.js (App Router)
+- TypeScript
+- Tailwind CSS
+- Upstash Redis (via Vercel)
+- Recharts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🧠 Design Principles
+- Clean, modern dashboard UI
+- Hebrew (RTL) support
+- Modular and extensible architecture
+- No fake data — missing data is explicitly shown
+- All insights traceable to real inputs
 
-## Deploy on Vercel
+## 🔐 Access
+- Private app (password protected)
+- Intended for personal use only
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🚀 Deployment
+- Hosted on Vercel
+- Connected to GitHub (private repo)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🛠️ Future Plans
+- Simulations (mortgage, investments)
+- Financial scenario modeling
+- Macro data integration
+- AI-based financial insights
