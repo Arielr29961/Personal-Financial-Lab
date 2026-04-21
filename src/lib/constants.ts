@@ -42,4 +42,5 @@ export const REDIS_KEYS = {
   snapshotIndex: 'snapshot:index',
   snapshot: (yearMonth: string) => `snapshot:${yearMonth}`,
   settings: 'settings',
+  recycleBin: 'recycle-bin',
 } as const;

@@ -119,7 +119,17 @@ export function computeMonthSummary(
   // Expenses
   const arielExpenses = personExpenseTotal(snapshot.expenses?.ariel);
   const inbarExpenses = personExpenseTotal(snapshot.expenses?.inbar);
-  const householdNetCashFlow = totalHouseholdMonthlyIncome - arielExpenses - inbarExpenses;
+
+  // One-time items
+  const oneTimeIncome = (snapshot.oneTimeItems ?? [])
+    .filter((i) => i.type === 'income')
+    .reduce((s, i) => s + i.amount, 0);
+  const oneTimeExpense = (snapshot.oneTimeItems ?? [])
+    .filter((i) => i.type === 'expense')
+    .reduce((s, i) => s + i.amount, 0);
+
+  const householdNetCashFlow =
+    totalHouseholdMonthlyIncome + oneTimeIncome - arielExpenses - inbarExpenses - oneTimeExpense;
 
   // Net worth change vs prior month
   let monthlyNetWorthChange: number | null = null;
@@ -157,13 +167,24 @@ export function computeCashFlow(snapshots: MonthlySnapshot[]): CashFlowEntry[] {
   return snapshots.map((snapshot) => {
     const arielWage = snapshot.wages?.ariel?.amount ?? 0;
     const inbarWage = snapshot.wages?.inbar?.amount ?? 0;
-    const income = arielWage + inbarWage;
+    const incomeExOneTime = arielWage + inbarWage;
 
     const arielExp = personExpenseTotal(snapshot.expenses?.ariel);
     const inbarExp = personExpenseTotal(snapshot.expenses?.inbar);
-    const expenses = arielExp + inbarExp;
+    const expensesExOneTime = arielExp + inbarExp;
 
+    // One-time items
+    const oneTimeIncome = (snapshot.oneTimeItems ?? [])
+      .filter((i) => i.type === 'income')
+      .reduce((s, i) => s + i.amount, 0);
+    const oneTimeExpense = (snapshot.oneTimeItems ?? [])
+      .filter((i) => i.type === 'expense')
+      .reduce((s, i) => s + i.amount, 0);
+
+    const income = incomeExOneTime + oneTimeIncome;
+    const expenses = expensesExOneTime + oneTimeExpense;
     const net = income - expenses;
+    const netExOneTime = incomeExOneTime - expensesExOneTime;
     cumulative += net;
 
     const expensesByCategory = mergedCategoryTotals(
@@ -177,6 +198,13 @@ export function computeCashFlow(snapshots: MonthlySnapshot[]): CashFlowEntry[] {
       expenses,
       net,
       cumulative,
+      arielIncome: arielWage,
+      inbarIncome: inbarWage,
+      arielExpenses: arielExp,
+      inbarExpenses: inbarExp,
+      incomeExOneTime,
+      expensesExOneTime,
+      netExOneTime,
       expensesByCategory,
     };
   });

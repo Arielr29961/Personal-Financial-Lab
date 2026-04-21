@@ -8,12 +8,14 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  ReferenceLine,
 } from 'recharts';
 import { formatILS, formatHebrewMonth } from '@/lib/formatters';
 import type { HistoryEntry } from '@/types/financial';
 
 interface NetWorthChartProps {
   data: HistoryEntry[];
+  selectedMonth?: string;
 }
 
 interface TooltipProps { active?: boolean; payload?: { value: number }[]; label?: string; }
@@ -23,17 +25,38 @@ function CustomTooltip({ active, payload, label }: TooltipProps) {
     <div className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 shadow-xl text-sm">
       {label && <div className="text-slate-400 mb-1">{formatHebrewMonth(label)}</div>}
       <div className="text-slate-50 font-semibold tabular">
-        {formatILS(payload[0].value)}
+        {formatILS(payload[0].value ?? 0)}
       </div>
     </div>
   );
 }
 
-export function NetWorthChart({ data }: NetWorthChartProps) {
-  const chartData = data.map((entry) => ({
-    month: entry.yearMonth,
-    netWorth: entry.summary.netWorth,
-  }));
+// Generate a full range of months between first and last data point,
+// filling gaps with null so Recharts renders visible gaps
+function buildChartData(entries: HistoryEntry[]) {
+  if (entries.length === 0) return [];
+
+  const dataMap = new Map(entries.map((e) => [e.yearMonth, e.summary.netWorth]));
+  const sorted = [...entries].sort((a, b) => a.yearMonth.localeCompare(b.yearMonth));
+  const first = sorted[0].yearMonth;
+  const last = sorted[sorted.length - 1].yearMonth;
+
+  const result: { month: string; netWorth: number | null }[] = [];
+  let [y, m] = first.split('-').map(Number);
+  const [endY, endM] = last.split('-').map(Number);
+
+  while (y < endY || (y === endY && m <= endM)) {
+    const ym = `${y}-${String(m).padStart(2, '0')}`;
+    result.push({ month: ym, netWorth: dataMap.get(ym) ?? null });
+    m++;
+    if (m > 12) { m = 1; y++; }
+  }
+
+  return result;
+}
+
+export function NetWorthChart({ data, selectedMonth }: NetWorthChartProps) {
+  const chartData = buildChartData(data);
 
   return (
     <ResponsiveContainer width="100%" height={260}>
@@ -57,6 +80,14 @@ export function NetWorthChart({ data }: NetWorthChartProps) {
           width={60}
         />
         <Tooltip content={<CustomTooltip />} />
+        {selectedMonth && (
+          <ReferenceLine
+            x={selectedMonth}
+            stroke="#6366f1"
+            strokeDasharray="4 4"
+            strokeOpacity={0.7}
+          />
+        )}
         <Line
           type="monotone"
           dataKey="netWorth"
@@ -64,6 +95,7 @@ export function NetWorthChart({ data }: NetWorthChartProps) {
           strokeWidth={2.5}
           dot={{ fill: '#6366f1', r: 4 }}
           activeDot={{ r: 6, fill: '#818cf8' }}
+          connectNulls={false}
         />
       </LineChart>
     </ResponsiveContainer>

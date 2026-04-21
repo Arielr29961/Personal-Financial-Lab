@@ -3,6 +3,7 @@ import type {
   MonthlySnapshot,
   SnapshotIndex,
   Settings,
+  RecycleBin,
 } from '@/types/financial';
 import { REDIS_KEYS } from './constants';
 
@@ -66,4 +67,23 @@ export async function getSettings(): Promise<Settings | null> {
 
 export async function saveSettings(settings: Settings): Promise<void> {
   await redis.set(REDIS_KEYS.settings, settings);
+}
+
+// ── Recycle Bin ────────────────────────────────────────────────────────────────
+
+export async function getRecycleBin(): Promise<RecycleBin | null> {
+  return redis.get<RecycleBin>(REDIS_KEYS.recycleBin);
+}
+
+export async function saveRecycleBin(bin: RecycleBin): Promise<void> {
+  // Store for 90 days (7,776,000 seconds)
+  await redis.set(REDIS_KEYS.recycleBin, bin, { ex: 7_776_000 });
+}
+
+export async function clearAllData(): Promise<void> {
+  const index = await getSnapshotIndex();
+  if (index.months.length > 0) {
+    await Promise.all(index.months.map((m) => redis.del(REDIS_KEYS.snapshot(m))));
+  }
+  await redis.set(REDIS_KEYS.snapshotIndex, { months: [], latestMonth: '' });
 }

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSidebar } from '@/contexts/SidebarContext';
 
 const NAV_ITEMS = [
   { href: '/', label: 'סקירה כללית', icon: '📊' },
@@ -9,7 +10,7 @@ const NAV_ITEMS = [
   { href: '/hishtalmut', label: 'קרן השתלמות', icon: '🎓' },
   { href: '/investments', label: 'תיק השקעות', icon: '📈' },
   { href: '/bank', label: 'בנקים ופיקדונות', icon: '🏛️' },
-  { href: '/history', label: 'היסטוריה', icon: '📅' },
+  { href: '/history', label: 'מאזן לאורך זמן', icon: '📅' },
   { href: '/shotef', label: 'שוטף', icon: '💸' },
   { href: '/update', label: 'עדכון חודשי', icon: '✏️' },
   { href: '/settings', label: 'הגדרות', icon: '⚙️' },
@@ -17,19 +18,31 @@ const NAV_ITEMS = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { isOpen } = useSidebar();
 
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex flex-col w-56 bg-slate-900 border-l border-slate-800 shrink-0">
+      <aside
+        className={`hidden md:flex flex-col bg-slate-900 border-l border-slate-800 shrink-0 transition-all duration-200 overflow-hidden ${
+          isOpen ? 'w-56' : 'w-14'
+        }`}
+      >
         {/* Brand */}
-        <div className="px-5 py-6 border-b border-slate-800">
-          <div className="text-lg font-bold text-slate-50">מעבדה פיננסית</div>
-          <div className="text-xs text-slate-500 mt-0.5">אריאל וענבר</div>
-        </div>
+        {isOpen && (
+          <div className="px-5 py-6 border-b border-slate-800">
+            <div className="text-lg font-bold text-slate-50">מעבדה פיננסית</div>
+            <div className="text-xs text-slate-500 mt-0.5">אריאל וענבר</div>
+          </div>
+        )}
+        {!isOpen && (
+          <div className="py-6 border-b border-slate-800 flex justify-center">
+            <span className="text-lg">💰</span>
+          </div>
+        )}
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 space-y-0.5">
+        <nav className="flex-1 px-2 py-4 space-y-0.5">
           {NAV_ITEMS.map((item) => {
             const isActive =
               item.href === '/'
@@ -39,14 +52,15 @@ export default function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                title={!isOpen ? item.label : undefined}
+                className={`flex items-center gap-3 px-2 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   isActive
                     ? 'bg-indigo-600 text-white'
                     : 'text-slate-400 hover:text-slate-50 hover:bg-slate-800'
-                }`}
+                } ${!isOpen ? 'justify-center' : ''}`}
               >
-                <span className="text-base">{item.icon}</span>
-                {item.label}
+                <span className="text-base shrink-0">{item.icon}</span>
+                {isOpen && <span className="truncate">{item.label}</span>}
               </Link>
             );
           })}

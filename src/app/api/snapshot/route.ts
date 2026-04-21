@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
     bankAccounts: body.bankAccounts ?? [],
     wages: body.wages ?? DEFAULT_WAGES,
     expenses: body.expenses ?? DEFAULT_EXPENSES,
+    oneTimeItems: body.oneTimeItems ?? [],
   };
 
   await saveSnapshot(snapshot);

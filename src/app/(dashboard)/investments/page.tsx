@@ -7,6 +7,7 @@ import { ProductTrendLine } from '@/components/charts/ProductTrendLine';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { formatILS, formatHebrewMonth } from '@/lib/formatters';
 import { OWNER_LABELS } from '@/lib/constants';
+import { useMonthFilter } from '@/contexts/MonthFilterContext';
 import type { SnapshotWithSummary, HistoryEntry, InvestmentPortfolio, OwnerSummary } from '@/types/financial';
 
 function emptyOwner(): OwnerSummary {
@@ -14,20 +15,22 @@ function emptyOwner(): OwnerSummary {
 }
 
 export default function InvestmentsPage() {
+  const { yearMonth } = useMonthFilter();
   const [latest, setLatest] = useState<SnapshotWithSummary | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     Promise.all([
-      fetch('/api/snapshot').then((r) => r.json()),
+      fetch(`/api/snapshot/${yearMonth}`).then((r) => (r.ok ? r.json() : null)),
       fetch('/api/history').then((r) => r.json()),
     ]).then(([snap, hist]) => {
       setLatest(snap);
       setHistory(hist.months ?? []);
       setLoading(false);
     });
-  }, []);
+  }, [yearMonth]);
 
   if (loading) return <PageSpinner />;
 
@@ -47,15 +50,17 @@ export default function InvestmentsPage() {
       <Card>
         <CardTitle>{'סה"כ תיק השקעות'}</CardTitle>
         <div className="text-3xl font-bold text-slate-50 tabular mt-1">{formatILS(total)}</div>
-        {latest?.snapshot && (
+        {latest?.snapshot ? (
           <div className="text-sm text-slate-500 mt-1">{formatHebrewMonth(latest.snapshot.yearMonth)}</div>
+        ) : (
+          <div className="text-sm text-slate-500 mt-1">אין נתונים לחודש זה</div>
         )}
       </Card>
 
       {trendData.length >= 2 && (
         <Card>
           <CardTitle>מגמה לאורך זמן</CardTitle>
-          <ProductTrendLine data={trendData} color="#f59e0b" />
+          <ProductTrendLine data={trendData} color="#f59e0b" selectedMonth={yearMonth} />
         </Card>
       )}
 

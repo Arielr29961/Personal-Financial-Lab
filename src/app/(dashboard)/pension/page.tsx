@@ -7,6 +7,7 @@ import { ProductTrendLine } from '@/components/charts/ProductTrendLine';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { formatILS, formatHebrewMonth } from '@/lib/formatters';
 import { OWNER_LABELS } from '@/lib/constants';
+import { useMonthFilter } from '@/contexts/MonthFilterContext';
 import type { SnapshotWithSummary, HistoryEntry, PensionProduct, OwnerSummary } from '@/types/financial';
 
 function emptyOwner(): OwnerSummary {
@@ -14,20 +15,22 @@ function emptyOwner(): OwnerSummary {
 }
 
 export default function PensionPage() {
+  const { yearMonth } = useMonthFilter();
   const [latest, setLatest] = useState<SnapshotWithSummary | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     Promise.all([
-      fetch('/api/snapshot').then((r) => r.json()),
+      fetch(`/api/snapshot/${yearMonth}`).then((r) => (r.ok ? r.json() : null)),
       fetch('/api/history').then((r) => r.json()),
     ]).then(([snap, hist]) => {
       setLatest(snap);
       setHistory(hist.months ?? []);
       setLoading(false);
     });
-  }, []);
+  }, [yearMonth]);
 
   if (loading) return <PageSpinner />;
 
@@ -52,12 +55,15 @@ export default function PensionPage() {
             {formatHebrewMonth(latest.snapshot.yearMonth)}
           </div>
         )}
+        {!latest?.snapshot && (
+          <div className="text-sm text-slate-500 mt-1">אין נתונים לחודש זה</div>
+        )}
       </Card>
 
       {trendData.length >= 2 && (
         <Card>
           <CardTitle>מגמה לאורך זמן</CardTitle>
-          <ProductTrendLine data={trendData} color="#6366f1" />
+          <ProductTrendLine data={trendData} color="#6366f1" selectedMonth={yearMonth} />
         </Card>
       )}
 

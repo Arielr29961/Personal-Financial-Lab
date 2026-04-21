@@ -57,7 +57,7 @@ function emptyExpenses() {
   return { ariel: emptyPersonExpenses(), inbar: emptyPersonExpenses() };
 }
 
-type TabId = 'pension' | 'hishtalmut' | 'investments' | 'bank' | 'wages' | 'expenses';
+type TabId = 'pension' | 'hishtalmut' | 'investments' | 'bank' | 'wages' | 'expenses' | 'onetime';
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'pension',    label: 'קרן פנסיה',       icon: '🏦' },
@@ -66,6 +66,7 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'bank',       label: 'בנקים',           icon: '🏛️' },
   { id: 'wages',      label: 'שכר חודשי',       icon: '💼' },
   { id: 'expenses',   label: 'הוצאות חודשיות',  icon: '💸' },
+  { id: 'onetime',    label: 'חד פעמי',         icon: '⚡' },
 ];
 
 // Build bank-account dropdown options from current form values
@@ -97,6 +98,7 @@ export default function UpdatePage() {
       bankAccounts: [],
       wages: emptyWages(),
       expenses: emptyExpenses(),
+      oneTimeItems: [],
     },
   });
 
@@ -104,15 +106,19 @@ export default function UpdatePage() {
   const hishtalmutArray = useFieldArray({ control, name: 'hishtalmuts' });
   const investmentsArray = useFieldArray({ control, name: 'investments' });
   const bankArray = useFieldArray({ control, name: 'bankAccounts' });
+  const oneTimeArray = useFieldArray({ control, name: 'oneTimeItems' });
 
-  // Watch wages, expenses, and bank accounts for auto-compute
+  // Watch wages, expenses, bank accounts, and oneTimeItems for auto-compute
   const watchedWages = useWatch({ control, name: 'wages' });
   const watchedExpenses = useWatch({ control, name: 'expenses' });
   const watchedBankAccounts = useWatch({ control, name: 'bankAccounts' });
+  const watchedOneTimeItems = useWatch({ control, name: 'oneTimeItems' });
 
-  // Load snapshot for selected month
+  // Load snapshot for selected month — reset active tab to avoid stale state
   useEffect(() => {
     setLoading(true);
+    setError('');
+    setActiveTab('pension');
     setPrevSnapshot(null);
 
     const [year, month] = selectedMonth.split('-').map(Number);
@@ -141,30 +147,35 @@ export default function UpdatePage() {
           bankAccounts: snapshot.bankAccounts ?? [],
           wages: snapshot.wages ?? emptyWages(),
           expenses: snapshot.expenses ?? emptyExpenses(),
+          oneTimeItems: snapshot.oneTimeItems ?? [],
         });
       } else if (prev) {
-        // Pre-fill from previous month but don't carry wages/expenses
+        // Pre-fill from previous month; carry wages (salary persistence) but not expenses/one-time
         reset({
           yearMonth: selectedMonth,
           pensions: prev.pensions ?? [],
           hishtalmuts: prev.hishtalmuts ?? [],
           investments: prev.investments ?? [],
           bankAccounts: prev.bankAccounts ?? [],
-          wages: emptyWages(),
+          wages: prev.wages ?? emptyWages(),   // ← persist salary from previous month
           expenses: emptyExpenses(),
+          oneTimeItems: [],
         });
       } else {
         reset({
           yearMonth: selectedMonth,
           pensions: [], hishtalmuts: [], investments: [], bankAccounts: [],
-          wages: emptyWages(), expenses: emptyExpenses(),
+          wages: emptyWages(), expenses: emptyExpenses(), oneTimeItems: [],
         });
       }
+    }).catch(() => {
+      setError('שגיאה בטעינת הנתונים. נסה לרענן.');
+    }).finally(() => {
       setLoading(false);
     });
   }, [selectedMonth, reset]);
 
-  // Auto-compute bank balances when wages/expenses change
+  // Auto-compute bank balances when wages/expenses/oneTimeItems change
   const autoComputeBankBalances = useCallback(() => {
     if (!watchedBankAccounts) return;
 
@@ -195,6 +206,14 @@ export default function UpdatePage() {
           : (e.categories ?? []).reduce((s: number, c: ExpenseCategory) => s + (c.amount ?? 0), 0);
       }
 
+      // Find linked one-time items
+      for (const item of watchedOneTimeItems ?? []) {
+        if (item.bankAccountId === acc.id) {
+          if (item.type === 'income') linkedIncome += item.amount ?? 0;
+          else linkedExpenses += item.amount ?? 0;
+        }
+      }
+
       const isLinked = linkedIncome > 0 || linkedExpenses > 0;
       if (!isLinked) return;
 
@@ -204,11 +223,11 @@ export default function UpdatePage() {
       const computed = prevBalance + linkedIncome - linkedExpenses;
       setValue(`bankAccounts.${index}.currentBalance`, computed);
     });
-  }, [watchedWages, watchedExpenses, watchedBankAccounts, prevSnapshot, setValue]);
+  }, [watchedWages, watchedExpenses, watchedBankAccounts, watchedOneTimeItems, prevSnapshot, setValue]);
 
   useEffect(() => {
     if (!loading) autoComputeBankBalances();
-  }, [watchedWages, watchedExpenses, loading, autoComputeBankBalances]);
+  }, [watchedWages, watchedExpenses, watchedOneTimeItems, loading, autoComputeBankBalances]);
 
   async function onSubmit(values: FormValues) {
     setSaving(true);
@@ -374,7 +393,8 @@ export default function UpdatePage() {
                   watchedWages?.ariel?.bankAccountId === field.id ||
                   watchedWages?.inbar?.bankAccountId === field.id ||
                   watchedExpenses?.ariel?.bankAccountId === field.id ||
-                  watchedExpenses?.inbar?.bankAccountId === field.id;
+                  watchedExpenses?.inbar?.bankAccountId === field.id ||
+                  (watchedOneTimeItems ?? []).some((i) => i.bankAccountId === field.id);
 
                 return (
                   <Card key={field.id}>
@@ -458,6 +478,96 @@ export default function UpdatePage() {
             </div>
           )}
 
+          {/* ── חד פעמי ── */}
+          {activeTab === 'onetime' && (
+            <div className="space-y-4">
+              <p className="text-xs text-slate-500">
+                פריטי הכנסה/הוצאה שאינם חוזרים חודשית. יכללו בחישוב המאזן החודשי ויתרת הבנק.
+              </p>
+              {oneTimeArray.fields.map((field, index) => (
+                <Card key={field.id}>
+                  <div className="flex justify-between items-center mb-3">
+                    <h4 className="font-medium text-slate-200">פריט #{index + 1}</h4>
+                    <button
+                      type="button"
+                      onClick={() => oneTimeArray.remove(index)}
+                      className="text-red-400 hover:text-red-300 text-sm px-2"
+                    >
+                      ✕ הסר
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Input
+                      label="סכום (₪)"
+                      type="number"
+                      prefix="₪"
+                      {...register(`oneTimeItems.${index}.amount`, { valueAsNumber: true })}
+                    />
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-1.5">סוג</label>
+                      <div className="flex gap-2">
+                        <Controller
+                          control={control}
+                          name={`oneTimeItems.${index}.type`}
+                          render={({ field }) => (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => field.onChange('income')}
+                                className={`flex-1 py-2 rounded-lg text-sm font-medium transition border ${
+                                  field.value === 'income'
+                                    ? 'bg-emerald-600 border-emerald-600 text-white'
+                                    : 'border-slate-600 text-slate-400 hover:text-slate-200'
+                                }`}
+                              >
+                                הכנסה
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => field.onChange('expense')}
+                                className={`flex-1 py-2 rounded-lg text-sm font-medium transition border ${
+                                  field.value === 'expense'
+                                    ? 'bg-red-600 border-red-600 text-white'
+                                    : 'border-slate-600 text-slate-400 hover:text-slate-200'
+                                }`}
+                              >
+                                הוצאה
+                              </button>
+                            </>
+                          )}
+                        />
+                      </div>
+                    </div>
+                    <Controller
+                      control={control}
+                      name={`oneTimeItems.${index}.bankAccountId`}
+                      render={({ field }) => (
+                        <Select
+                          label="חשבון בנק"
+                          options={bankOptions(watchedBankAccounts ?? [])}
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
+                      )}
+                    />
+                    <Input
+                      label="הערה (אופציונלי)"
+                      {...register(`oneTimeItems.${index}.note`)}
+                      placeholder="תיאור הפריט..."
+                    />
+                  </div>
+                </Card>
+              ))}
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => oneTimeArray.append({ id: generateId(), amount: 0, type: 'income', bankAccountId: '', note: '' })}
+              >
+                + הוסף פריט חד פעמי
+              </Button>
+            </div>
+          )}
+
           {/* Save */}
           <div className="mt-6 flex items-center gap-4">
             <Button type="submit" loading={saving} size="lg">שמור נתונים</Button>
@@ -484,6 +594,7 @@ function ExpensePersonCard({ person, control, register, bankAccounts }: ExpenseP
   const mode = useWatch({ control, name: `expenses.${person}.mode` });
   const categories = useWatch({ control, name: `expenses.${person}.categories` }) ?? [];
   const catArray = useFieldArray({ control, name: `expenses.${person}.categories` });
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const total = mode === 'total'
     ? undefined
@@ -556,15 +667,33 @@ function ExpensePersonCard({ person, control, register, bankAccounts }: ExpenseP
         <div className="space-y-2">
           {catArray.fields.map((field, index) => (
             <div key={field.id} className="flex items-center gap-2">
-              {field.isCustom ? (
+              {/* Category name — editable for all, inline edit toggle for non-custom */}
+              {editingIndex === index || field.isCustom ? (
                 <input
                   className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="שם קטגוריה"
                   {...register(`expenses.${person}.categories.${index}.name`)}
+                  onBlur={() => setEditingIndex(null)}
+                  autoFocus={editingIndex === index}
                 />
               ) : (
-                <span className="flex-1 text-sm text-slate-300 px-1">{field.name}</span>
+                <span
+                  className="flex-1 text-sm text-slate-300 px-1 cursor-pointer hover:text-slate-100 flex items-center gap-1 group"
+                  title="לחץ לעריכה"
+                >
+                  {field.name}
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setEditingIndex(index)}
+                    onKeyDown={(e) => e.key === 'Enter' && setEditingIndex(index)}
+                    className="text-slate-600 group-hover:text-slate-400 text-xs select-none"
+                  >
+                    ✏️
+                  </span>
+                </span>
               )}
+              {/* Amount */}
               <div className="w-32">
                 <input
                   type="number"
@@ -573,15 +702,14 @@ function ExpensePersonCard({ person, control, register, bankAccounts }: ExpenseP
                   {...register(`expenses.${person}.categories.${index}.amount`, { valueAsNumber: true })}
                 />
               </div>
-              {field.isCustom && (
-                <button
-                  type="button"
-                  onClick={() => catArray.remove(index)}
-                  className="text-red-400 hover:text-red-300 text-sm px-1"
-                >
-                  ✕
-                </button>
-              )}
+              {/* Remove button — always visible */}
+              <button
+                type="button"
+                onClick={() => catArray.remove(index)}
+                className="text-red-400 hover:text-red-300 text-sm px-1"
+              >
+                ✕
+              </button>
             </div>
           ))}
           <button

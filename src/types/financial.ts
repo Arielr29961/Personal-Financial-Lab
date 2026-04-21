@@ -69,6 +69,15 @@ export interface MonthlyExpenses {
   inbar: PersonExpenses;
 }
 
+// ── One-time Items ─────────────────────────────────────────────────────────────
+export interface OneTimeItem {
+  id: string;
+  amount: number;
+  type: 'income' | 'expense';
+  bankAccountId: string;
+  note?: string;
+}
+
 // ── Monthly Snapshot (stored in Redis) ─────────────────────────────────────────
 export interface MonthlySnapshot {
   yearMonth: string;              // "2025-01" — primary key
@@ -80,11 +89,19 @@ export interface MonthlySnapshot {
   bankAccounts: BankAccount[];
   wages: MonthlyWages;
   expenses: MonthlyExpenses;
+  oneTimeItems: OneTimeItem[];
 }
 
 // ── Settings (kept for future use) ────────────────────────────────────────────
 export interface Settings {
   [key: string]: unknown;
+}
+
+// ── Recycle Bin ────────────────────────────────────────────────────────────────
+export interface RecycleBin {
+  deletedAt: string;              // ISO timestamp
+  snapshots: MonthlySnapshot[];
+  settings: Settings | null;
 }
 
 // ── Index ──────────────────────────────────────────────────────────────────────
@@ -126,10 +143,19 @@ export interface MonthSummary {
 // ── Cash Flow (for שוטף page) ─────────────────────────────────────────────────
 export interface CashFlowEntry {
   yearMonth: string;
-  income: number;                 // arielWage + inbarWage
-  expenses: number;               // arielExpenses + inbarExpenses
+  income: number;                 // wages + one-time income
+  expenses: number;               // category expenses + one-time expenses
   net: number;                    // income – expenses
   cumulative: number;             // running total across all months
+  // Per-person breakdown
+  arielIncome: number;
+  inbarIncome: number;
+  arielExpenses: number;
+  inbarExpenses: number;
+  // Excluding one-time items
+  incomeExOneTime: number;
+  expensesExOneTime: number;
+  netExOneTime: number;
   expensesByCategory: { name: string; ariel: number; inbar: number; total: number }[];
 }
 

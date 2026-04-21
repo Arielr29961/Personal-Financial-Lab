@@ -8,17 +8,19 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  ReferenceLine,
 } from 'recharts';
 import { formatILS, formatHebrewMonth } from '@/lib/formatters';
 
 interface DataPoint {
   month: string;
-  value: number;
+  value: number | null;
 }
 
 interface ProductTrendLineProps {
   data: DataPoint[];
   color?: string;
+  selectedMonth?: string;
 }
 
 interface TooltipProps { active?: boolean; payload?: { value: number }[]; label?: string; }
@@ -28,13 +30,13 @@ function CustomTooltip({ active, payload, label }: TooltipProps) {
     <div className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 shadow-xl text-sm">
       {label && <div className="text-slate-400 mb-1">{formatHebrewMonth(label)}</div>}
       <div className="text-slate-50 font-semibold tabular">
-        {formatILS(payload[0].value)}
+        {formatILS(payload[0].value ?? 0)}
       </div>
     </div>
   );
 }
 
-export function ProductTrendLine({ data, color = '#6366f1' }: ProductTrendLineProps) {
+export function ProductTrendLine({ data, color = '#6366f1', selectedMonth }: ProductTrendLineProps) {
   if (data.length < 2) return null;
 
   return (
@@ -59,6 +61,14 @@ export function ProductTrendLine({ data, color = '#6366f1' }: ProductTrendLinePr
           width={55}
         />
         <Tooltip content={<CustomTooltip />} />
+        {selectedMonth && (
+          <ReferenceLine
+            x={selectedMonth}
+            stroke="#6366f1"
+            strokeDasharray="4 4"
+            strokeOpacity={0.7}
+          />
+        )}
         <Line
           type="monotone"
           dataKey="value"
@@ -66,6 +76,7 @@ export function ProductTrendLine({ data, color = '#6366f1' }: ProductTrendLinePr
           strokeWidth={2}
           dot={{ fill: color, r: 3 }}
           activeDot={{ r: 5 }}
+          connectNulls={false}
         />
       </LineChart>
     </ResponsiveContainer>

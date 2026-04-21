@@ -5,9 +5,11 @@ import { NetWorthChart } from '@/components/charts/NetWorthChart';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { formatILS, formatHebrewMonth, formatChangeILS, changeColor } from '@/lib/formatters';
+import { useMonthFilter } from '@/contexts/MonthFilterContext';
 import type { HistoryEntry } from '@/types/financial';
 
 export default function HistoryPage() {
+  const { yearMonth } = useMonthFilter();
   const [data, setData] = useState<{ months: HistoryEntry[] } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -40,7 +42,7 @@ export default function HistoryPage() {
       <Card>
         <CardTitle>מגמת שווי נקי</CardTitle>
         <div className="mt-2">
-          <NetWorthChart data={months} />
+          <NetWorthChart data={months} selectedMonth={yearMonth} />
         </div>
       </Card>
 
@@ -64,15 +66,27 @@ export default function HistoryPage() {
             </thead>
             <tbody>
               {tableMonths.map((entry) => {
-                const { yearMonth, summary } = entry;
+                const { yearMonth: entryYM, summary } = entry;
                 const { ariel, inbar, joint } = summary;
+                const isSelected = entryYM === yearMonth;
                 return (
                   <tr
-                    key={yearMonth}
-                    className="border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors"
+                    key={entryYM}
+                    className={`border-b border-slate-700/50 transition-colors ${
+                      isSelected
+                        ? 'bg-indigo-900/30 border-indigo-700/50'
+                        : 'hover:bg-slate-700/20'
+                    }`}
                   >
                     <td className="px-5 py-3 font-medium text-slate-300">
-                      {formatHebrewMonth(yearMonth)}
+                      <div className="flex items-center gap-2">
+                        {formatHebrewMonth(entryYM)}
+                        {isSelected && (
+                          <span className="text-xs bg-indigo-600/40 text-indigo-300 px-1.5 py-0.5 rounded">
+                            נבחר
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 tabular text-slate-50">
                       {formatILS(summary.netWorth)}
