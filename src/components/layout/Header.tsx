@@ -10,6 +10,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/investments': 'תיק השקעות',
   '/bank': 'בנקים ופיקדונות',
   '/history': 'היסטוריה',
+  '/shotef': 'שוטף — הכנסות והוצאות',
   '/update': 'עדכון חודשי',
   '/settings': 'הגדרות',
 };

@@ -3,28 +3,33 @@ import {
   getLatestSnapshot,
   getSnapshot,
   saveSnapshot,
-  getSettings,
 } from '@/lib/redis';
 import { computeMonthSummary } from '@/lib/calculations';
 import { previousYearMonth } from '@/lib/formatters';
 import type { MonthlySnapshot } from '@/types/financial';
 
+const DEFAULT_WAGES = {
+  ariel: { amount: 0, bankAccountId: '' },
+  inbar:  { amount: 0, bankAccountId: '' },
+};
+
+const DEFAULT_EXPENSES = {
+  ariel: { mode: 'total' as const, totalOverride: 0, categories: [], bankAccountId: '' },
+  inbar:  { mode: 'total' as const, totalOverride: 0, categories: [], bankAccountId: '' },
+};
+
 // GET /api/snapshot — returns latest snapshot + summary
 export async function GET() {
-  const [snapshot, settings] = await Promise.all([
-    getLatestSnapshot(),
-    getSettings(),
-  ]);
+  const snapshot = await getLatestSnapshot();
 
   if (!snapshot) {
     return NextResponse.json({ snapshot: null, summary: null });
   }
 
-  // Fetch prior month for change calculation
   const prevYM = previousYearMonth(snapshot.yearMonth);
   const previousSnapshot = await getSnapshot(prevYM);
 
-  const summary = computeMonthSummary(snapshot, settings, previousSnapshot);
+  const summary = computeMonthSummary(snapshot, previousSnapshot);
   return NextResponse.json({ snapshot, summary });
 }
 
@@ -36,7 +41,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'yearMonth חסר או לא תקין' }, { status: 400 });
   }
 
-  // Check for existing snapshot and preserve createdAt
   const existing = await getSnapshot(body.yearMonth);
   const now = new Date().toISOString();
 
@@ -48,6 +52,8 @@ export async function POST(request: NextRequest) {
     hishtalmuts: body.hishtalmuts ?? [],
     investments: body.investments ?? [],
     bankAccounts: body.bankAccounts ?? [],
+    wages: body.wages ?? DEFAULT_WAGES,
+    expenses: body.expenses ?? DEFAULT_EXPENSES,
   };
 
   await saveSnapshot(snapshot);

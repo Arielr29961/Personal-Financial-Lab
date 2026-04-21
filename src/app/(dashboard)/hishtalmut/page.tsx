@@ -79,7 +79,6 @@ export default function HishtalmutPage() {
 }
 
 function HishtalmutCard({ h }: { h: HishtalmutProduct }) {
-  const totalMonthly = h.monthlyEmployeeContribution + h.monthlyEmployerContribution;
   return (
     <Card>
       <div className="flex items-start justify-between mb-3">
@@ -95,20 +94,6 @@ function HishtalmutCard({ h }: { h: HishtalmutProduct }) {
         <div className="text-end">
           <div className="text-xs text-slate-500">שווי נוכחי</div>
           <div className="text-xl font-bold text-slate-50 tabular">{formatILS(h.currentValue)}</div>
-        </div>
-      </div>
-      <div className="border-t border-slate-700 pt-3 mt-3 grid grid-cols-2 gap-3 text-sm">
-        <div>
-          <div className="text-slate-500 text-xs">הפרשה עובד/חודש</div>
-          <div className="text-slate-200 tabular">{formatILS(h.monthlyEmployeeContribution)}</div>
-        </div>
-        <div>
-          <div className="text-slate-500 text-xs">הפרשת מעסיק/חודש</div>
-          <div className="text-slate-200 tabular">{formatILS(h.monthlyEmployerContribution)}</div>
-        </div>
-        <div>
-          <div className="text-slate-500 text-xs">{'סה"כ חודשי'}</div>
-          <div className="text-slate-200 tabular">{formatILS(totalMonthly)}</div>
         </div>
       </div>
       {h.notes && (

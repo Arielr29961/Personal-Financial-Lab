@@ -16,54 +16,80 @@ export interface PensionProduct {
 export interface HishtalmutProduct {
   id: string;
   owner: Owner;
-  providerName: string;           // e.g. "פסגות"
+  providerName: string;
   currentValue: number;
   isLiquid: boolean;              // true if 6-year lock-up has passed
-  monthlyEmployeeContribution: number;
-  monthlyEmployerContribution: number;
   notes?: string;
 }
 
 export interface InvestmentPortfolio {
   id: string;
   owner: Owner;
-  brokerName: string;             // e.g. "אינטראקטיב ברוקרס", "מיטב"
+  brokerName: string;
   currentValue: number;
-  cashComponent: number;          // cash portion within portfolio
   notes?: string;
 }
 
 export interface BankAccount {
   id: string;
   owner: Owner;
-  bankName: string;               // e.g. "בנק הפועלים", "בנק לאומי"
+  bankName: string;
   accountType: 'checking' | 'savings' | 'deposit';
   currentBalance: number;
-  interestRate?: number;          // annual % for deposits
-  maturityDate?: string;          // ISO date string for term deposits (YYYY-MM-DD)
   notes?: string;
+}
+
+// ── Wages & Expenses ───────────────────────────────────────────────────────────
+export interface WageEntry {
+  amount: number;
+  bankAccountId: string;          // id of the BankAccount that receives the wage
+}
+
+export interface ExpenseCategory {
+  id: string;
+  name: string;                   // Hebrew label
+  amount: number;
+  isCustom: boolean;
+}
+
+export interface PersonExpenses {
+  mode: 'total' | 'breakdown';
+  totalOverride?: number;         // used when mode === 'total'
+  categories: ExpenseCategory[];  // used when mode === 'breakdown'
+  bankAccountId: string;          // id of the BankAccount that is debited
+}
+
+export interface MonthlyWages {
+  ariel: WageEntry;
+  inbar: WageEntry;
+}
+
+export interface MonthlyExpenses {
+  ariel: PersonExpenses;
+  inbar: PersonExpenses;
 }
 
 // ── Monthly Snapshot (stored in Redis) ─────────────────────────────────────────
 export interface MonthlySnapshot {
   yearMonth: string;              // "2025-01" — primary key
-  createdAt: string;              // ISO datetime
-  updatedAt: string;              // ISO datetime
+  createdAt: string;
+  updatedAt: string;
   pensions: PensionProduct[];
   hishtalmuts: HishtalmutProduct[];
   investments: InvestmentPortfolio[];
   bankAccounts: BankAccount[];
+  wages: MonthlyWages;
+  expenses: MonthlyExpenses;
 }
 
-// ── Settings (stored in Redis under key "settings") ────────────────────────────
+// ── Settings (kept for future use) ────────────────────────────────────────────
 export interface Settings {
-  arielMonthlyNetWage: number;    // ₪ take-home after tax
-  inbarMonthlyNetWage: number;
+  [key: string]: unknown;
 }
 
-// ── Index (stored in Redis under key "snapshot:index") ────────────────────────
+// ── Index ──────────────────────────────────────────────────────────────────────
 export interface SnapshotIndex {
-  months: string[];               // sorted array: ["2024-11", "2024-12", "2025-01"]
+  months: string[];
   latestMonth: string;
 }
 
@@ -83,11 +109,28 @@ export interface MonthSummary {
   ariel: OwnerSummary;
   inbar: OwnerSummary;
   joint: OwnerSummary;
-  netWorth: number;               // sum of all owners
-  liquidNetWorth: number;         // excludes locked hishtalmut
-  // wage-based metrics (null if settings not configured)
-  totalHouseholdMonthlyIncome: number | null;
-  monthlyNetWorthChange: number | null;   // vs prior month's snapshot
+  netWorth: number;
+  liquidNetWorth: number;
+  // Cash flow fields
+  arielWage: number;
+  inbarWage: number;
+  arielExpenses: number;
+  inbarExpenses: number;
+  householdNetCashFlow: number;   // (wages) – (expenses)
+  // Net worth change vs prior month
+  monthlyNetWorthChange: number | null;
+  // Wage-based total income (for overview card)
+  totalHouseholdMonthlyIncome: number;
+}
+
+// ── Cash Flow (for שוטף page) ─────────────────────────────────────────────────
+export interface CashFlowEntry {
+  yearMonth: string;
+  income: number;                 // arielWage + inbarWage
+  expenses: number;               // arielExpenses + inbarExpenses
+  net: number;                    // income – expenses
+  cumulative: number;             // running total across all months
+  expensesByCategory: { name: string; ariel: number; inbar: number; total: number }[];
 }
 
 // ── API response shapes ────────────────────────────────────────────────────────

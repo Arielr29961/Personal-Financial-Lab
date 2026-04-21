@@ -5,7 +5,7 @@ import { Card, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { ProductTrendLine } from '@/components/charts/ProductTrendLine';
 import { PageSpinner } from '@/components/ui/Spinner';
-import { formatILS, formatHebrewMonth, formatPercent } from '@/lib/formatters';
+import { formatILS, formatHebrewMonth } from '@/lib/formatters';
 import { OWNER_LABELS } from '@/lib/constants';
 import type { SnapshotWithSummary, HistoryEntry, InvestmentPortfolio, OwnerSummary } from '@/types/financial';
 
@@ -71,12 +71,9 @@ export default function InvestmentsPage() {
 }
 
 function InvestmentCard({ inv }: { inv: InvestmentPortfolio }) {
-  const invested = inv.currentValue - inv.cashComponent;
-  const cashPct = inv.currentValue > 0 ? (inv.cashComponent / inv.currentValue) * 100 : 0;
-
   return (
     <Card>
-      <div className="flex items-start justify-between mb-3">
+      <div className="flex items-start justify-between">
         <div className="space-y-1">
           <div className="font-semibold text-slate-100">{inv.brokerName}</div>
           <Badge variant={inv.owner === 'ariel' ? 'blue' : 'green'}>{OWNER_LABELS[inv.owner]}</Badge>
@@ -84,16 +81,6 @@ function InvestmentCard({ inv }: { inv: InvestmentPortfolio }) {
         <div className="text-end">
           <div className="text-xs text-slate-500">שווי כולל</div>
           <div className="text-xl font-bold text-slate-50 tabular">{formatILS(inv.currentValue)}</div>
-        </div>
-      </div>
-      <div className="border-t border-slate-700 pt-3 mt-3 grid grid-cols-2 gap-3 text-sm">
-        <div>
-          <div className="text-slate-500 text-xs">מושקע</div>
-          <div className="text-slate-200 tabular">{formatILS(invested)}</div>
-        </div>
-        <div>
-          <div className="text-slate-500 text-xs">{`מזומן (${formatPercent(cashPct)})`}</div>
-          <div className="text-slate-200 tabular">{formatILS(inv.cashComponent)}</div>
         </div>
       </div>
       {inv.notes && (

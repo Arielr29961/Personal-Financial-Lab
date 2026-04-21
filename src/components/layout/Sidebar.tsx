@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: '/investments', label: 'תיק השקעות', icon: '📈' },
   { href: '/bank', label: 'בנקים ופיקדונות', icon: '🏛️' },
   { href: '/history', label: 'היסטוריה', icon: '📅' },
+  { href: '/shotef', label: 'שוטף', icon: '💸' },
   { href: '/update', label: 'עדכון חודשי', icon: '✏️' },
   { href: '/settings', label: 'הגדרות', icon: '⚙️' },
 ];

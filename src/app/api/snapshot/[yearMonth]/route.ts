@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSnapshot, getSettings } from '@/lib/redis';
+import { getSnapshot } from '@/lib/redis';
 import { computeMonthSummary } from '@/lib/calculations';
 import { previousYearMonth } from '@/lib/formatters';
 
@@ -13,10 +13,7 @@ export async function GET(
     return NextResponse.json({ error: 'פורמט תאריך לא תקין' }, { status: 400 });
   }
 
-  const [snapshot, settings] = await Promise.all([
-    getSnapshot(yearMonth),
-    getSettings(),
-  ]);
+  const snapshot = await getSnapshot(yearMonth);
 
   if (!snapshot) {
     return NextResponse.json({ error: 'חודש לא נמצא' }, { status: 404 });
@@ -25,6 +22,6 @@ export async function GET(
   const prevYM = previousYearMonth(yearMonth);
   const previousSnapshot = await getSnapshot(prevYM);
 
-  const summary = computeMonthSummary(snapshot, settings, previousSnapshot);
+  const summary = computeMonthSummary(snapshot, previousSnapshot);
   return NextResponse.json({ snapshot, summary });
 }

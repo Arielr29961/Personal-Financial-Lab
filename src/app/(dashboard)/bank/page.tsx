@@ -5,7 +5,7 @@ import { Card, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { ProductTrendLine } from '@/components/charts/ProductTrendLine';
 import { PageSpinner } from '@/components/ui/Spinner';
-import { formatILS, formatHebrewMonth, formatPercent, daysUntil } from '@/lib/formatters';
+import { formatILS, formatHebrewMonth } from '@/lib/formatters';
 import { OWNER_LABELS, BANK_ACCOUNT_TYPE_LABELS } from '@/lib/constants';
 import type { SnapshotWithSummary, HistoryEntry, BankAccount, OwnerSummary } from '@/types/financial';
 
@@ -72,11 +72,10 @@ export default function BankPage() {
 
 function BankAccountCard({ acc }: { acc: BankAccount }) {
   const typeLabel = BANK_ACCOUNT_TYPE_LABELS[acc.accountType];
-  const days = acc.maturityDate ? daysUntil(acc.maturityDate) : null;
 
   return (
     <Card>
-      <div className="flex items-start justify-between mb-3">
+      <div className="flex items-start justify-between">
         <div className="space-y-1">
           <div className="font-semibold text-slate-100">{acc.bankName}</div>
           <div className="flex gap-1.5">
@@ -91,25 +90,6 @@ function BankAccountCard({ acc }: { acc: BankAccount }) {
           <div className="text-xl font-bold text-slate-50 tabular">{formatILS(acc.currentBalance)}</div>
         </div>
       </div>
-
-      {(acc.interestRate !== undefined || acc.maturityDate) && (
-        <div className="border-t border-slate-700 pt-3 mt-3 grid grid-cols-2 gap-3 text-sm">
-          {acc.interestRate !== undefined && (
-            <div>
-              <div className="text-slate-500 text-xs">ריבית שנתית</div>
-              <div className="text-slate-200">{formatPercent(acc.interestRate * 100)}</div>
-            </div>
-          )}
-          {acc.maturityDate && days !== null && (
-            <div>
-              <div className="text-slate-500 text-xs">מועד פירעון</div>
-              <div className={`text-sm font-medium ${days < 30 ? 'text-yellow-400' : 'text-slate-200'}`}>
-                {days > 0 ? `בעוד ${days} ימים` : days === 0 ? 'היום' : `לפני ${Math.abs(days)} ימים`}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
       {acc.notes && (
         <div className="mt-3 text-xs text-slate-500 bg-slate-900/50 rounded-lg p-2">{acc.notes}</div>
       )}

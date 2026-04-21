@@ -3,8 +3,11 @@ import type {
   MonthSummary,
   OwnerSummary,
   Owner,
-  Settings,
+  PersonExpenses,
+  CashFlowEntry,
 } from '@/types/financial';
+
+// ── Owner summary ──────────────────────────────────────────────────────────────
 
 function emptyOwnerSummary(owner: Owner): OwnerSummary {
   return {
@@ -52,9 +55,43 @@ function computeOwnerSummary(
   return summary;
 }
 
+// ── Expense helpers ────────────────────────────────────────────────────────────
+
+export function personExpenseTotal(e: PersonExpenses): number {
+  if (!e) return 0;
+  if (e.mode === 'total') return e.totalOverride ?? 0;
+  return e.categories.reduce((sum, c) => sum + c.amount, 0);
+}
+
+/** Merge expense categories from two people for display */
+export function mergedCategoryTotals(
+  arielExpenses: PersonExpenses | undefined,
+  inbarExpenses: PersonExpenses | undefined
+): { name: string; ariel: number; inbar: number; total: number }[] {
+  const map = new Map<string, { name: string; ariel: number; inbar: number }>();
+
+  const addCategories = (expenses: PersonExpenses | undefined, person: 'ariel' | 'inbar') => {
+    if (!expenses || expenses.mode !== 'breakdown') return;
+    for (const cat of expenses.categories) {
+      const existing = map.get(cat.id) ?? { name: cat.name, ariel: 0, inbar: 0 };
+      existing[person] += cat.amount;
+      map.set(cat.id, existing);
+    }
+  };
+
+  addCategories(arielExpenses, 'ariel');
+  addCategories(inbarExpenses, 'inbar');
+
+  return Array.from(map.values()).map((v) => ({
+    ...v,
+    total: v.ariel + v.inbar,
+  }));
+}
+
+// ── Month summary ──────────────────────────────────────────────────────────────
+
 export function computeMonthSummary(
   snapshot: MonthlySnapshot,
-  settings: Settings | null,
   previousSnapshot: MonthlySnapshot | null
 ): MonthSummary {
   const ariel = computeOwnerSummary('ariel', snapshot);
@@ -74,17 +111,23 @@ export function computeMonthSummary(
     inbar.hishtalmutLiquidTotal +
     joint.hishtalmutLiquidTotal;
 
-  const totalHouseholdMonthlyIncome = settings
-    ? settings.arielMonthlyNetWage + settings.inbarMonthlyNetWage
-    : null;
+  // Wages
+  const arielWage = snapshot.wages?.ariel?.amount ?? 0;
+  const inbarWage = snapshot.wages?.inbar?.amount ?? 0;
+  const totalHouseholdMonthlyIncome = arielWage + inbarWage;
 
+  // Expenses
+  const arielExpenses = personExpenseTotal(snapshot.expenses?.ariel);
+  const inbarExpenses = personExpenseTotal(snapshot.expenses?.inbar);
+  const householdNetCashFlow = totalHouseholdMonthlyIncome - arielExpenses - inbarExpenses;
+
+  // Net worth change vs prior month
   let monthlyNetWorthChange: number | null = null;
   if (previousSnapshot) {
     const prevAriel = computeOwnerSummary('ariel', previousSnapshot);
     const prevInbar = computeOwnerSummary('inbar', previousSnapshot);
     const prevJoint = computeOwnerSummary('joint', previousSnapshot);
-    const prevNetWorth =
-      prevAriel.grandTotal + prevInbar.grandTotal + prevJoint.grandTotal;
+    const prevNetWorth = prevAriel.grandTotal + prevInbar.grandTotal + prevJoint.grandTotal;
     monthlyNetWorthChange = netWorth - prevNetWorth;
   }
 
@@ -95,12 +138,51 @@ export function computeMonthSummary(
     joint,
     netWorth,
     liquidNetWorth,
+    arielWage,
+    inbarWage,
+    arielExpenses,
+    inbarExpenses,
+    householdNetCashFlow,
     totalHouseholdMonthlyIncome,
     monthlyNetWorthChange,
   };
 }
 
-/** Compute a lightweight net worth for a snapshot (no settings needed) */
+// ── Cash flow history ──────────────────────────────────────────────────────────
+
+export function computeCashFlow(snapshots: MonthlySnapshot[]): CashFlowEntry[] {
+  // Snapshots should already be sorted chronologically
+  let cumulative = 0;
+
+  return snapshots.map((snapshot) => {
+    const arielWage = snapshot.wages?.ariel?.amount ?? 0;
+    const inbarWage = snapshot.wages?.inbar?.amount ?? 0;
+    const income = arielWage + inbarWage;
+
+    const arielExp = personExpenseTotal(snapshot.expenses?.ariel);
+    const inbarExp = personExpenseTotal(snapshot.expenses?.inbar);
+    const expenses = arielExp + inbarExp;
+
+    const net = income - expenses;
+    cumulative += net;
+
+    const expensesByCategory = mergedCategoryTotals(
+      snapshot.expenses?.ariel,
+      snapshot.expenses?.inbar
+    );
+
+    return {
+      yearMonth: snapshot.yearMonth,
+      income,
+      expenses,
+      net,
+      cumulative,
+      expensesByCategory,
+    };
+  });
+}
+
+/** Lightweight net worth (no settings needed) */
 export function computeNetWorth(snapshot: MonthlySnapshot): number {
   let total = 0;
   for (const p of snapshot.pensions) total += p.currentValue;
