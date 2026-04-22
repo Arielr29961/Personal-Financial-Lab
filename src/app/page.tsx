@@ -8,19 +8,22 @@ import { AllocationPie } from '@/components/charts/AllocationPie';
 import { PersonBar } from '@/components/charts/PersonBar';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { PageSpinner } from '@/components/ui/Spinner';
+import { useMonthFilter } from '@/contexts/MonthFilterContext';
 import type { SnapshotWithSummary } from '@/types/financial';
 import Link from 'next/link';
 
 export default function OverviewPage() {
+  const { yearMonth } = useMonthFilter();
   const [data, setData] = useState<SnapshotWithSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/snapshot')
-      .then((r) => r.json())
-      .then(setData)
+    setLoading(true);
+    fetch(`/api/snapshot/${yearMonth}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setData(d))
       .finally(() => setLoading(false));
-  }, []);
+  }, [yearMonth]);
 
   if (loading) return <PageSpinner />;
 
@@ -28,7 +31,7 @@ export default function OverviewPage() {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-center gap-4">
         <div className="text-5xl">📊</div>
-        <h2 className="text-xl font-semibold text-slate-200">אין נתונים עדיין</h2>
+        <h2 className="text-xl font-semibold text-slate-200">אין נתונים לחודש זה</h2>
         <p className="text-slate-400 text-sm max-w-xs">
           עדכן את הנתונים הפיננסיים שלך כדי להתחיל לראות את לוח הבקרה.
         </p>
